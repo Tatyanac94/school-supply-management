@@ -18,7 +18,7 @@ const ItemForm = ({ addItem }) => {
         value={itemName}
         onChange={(e) => setItemName(e.target.value)}
         placeholder="Enter item name"
-        className="px-3 py-2 border border-gray-300 rounded mr-2"
+        className="px-3 py-2 border border-gray-300 rounded mr-2 text-black"
       />
       <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded">
         Add Item

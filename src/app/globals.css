@@ -33,15 +33,6 @@ body {
   }
 }
 
-/* Define custom text colors */
-.text-magenta {
-  color: magenta; /* Change this to your desired shade of magenta */
-}
-
-.text-magenta:hover {
-  color: darkmagenta; /* Change this to your desired shade of magenta */
-}
-
 .text-black {
   color: black;
 }

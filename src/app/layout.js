@@ -15,10 +15,10 @@ export default function RootLayout({ children }) {
       <body className={inter.className}> 
         <header className="w-full">
           <nav className="flex justify-center space-x-4">
-            <Link href="/" className="text-magenta hover:text-magenta">
+            <Link href="/" className="text-white hover:text-red-500">
               Home
             </Link>
-            <Link href="/management" className="text-magenta hover:text-magenta">
+            <Link href="/management" className="text-white hover:text-red-500">
               Management
             </Link>
           </nav>

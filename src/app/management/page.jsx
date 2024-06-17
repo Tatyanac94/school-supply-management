@@ -51,17 +51,17 @@ const Management = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-4">Manage School Supplies</h1>
-      <ItemForm addItem={addItem} />
+      <ItemForm addItem={addItem}/>
       <ul>
         {items.map(item => (
-          <li key={item.id} className="mb-2">
+          <li key={item.id} className="mb-2 border-red-500 border-2 bg-blue-200 text-black font-bold rounded-lg p-2">
             {editItemId === item.id ? (
               <div className="flex items-center">
                 <input
                   type="text"
                   value={editItemName}
                   onChange={(e) => setEditItemName(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded mr-2"
+                  className="px-3 py-2 border border-gray-300 text-black rounded mr-2"
                 />
                 <button
                   className="px-4 py-2 bg-green-500 text-white rounded mr-2"
