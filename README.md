@@ -31,3 +31,5 @@ This application is deployed on Vercel. You can view the live site at:  [School 
 - React
 
 - Tailwind CSS
+
+- Google CLoud Firebase

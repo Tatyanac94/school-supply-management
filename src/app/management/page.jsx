@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import ItemForm from '/src/ItemForm';
+import ItemForm from '/src/components/ItemForm';
 
 const Management = () => {
   const initialItems = [
