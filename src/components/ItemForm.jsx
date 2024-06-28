@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+"use client";
+import React, { useState } from "react";
+import { Item } from "@/utils/inventory";
+
 
 const ItemForm = ({ addItem }) => {
   const [itemName, setItemName] = useState('');
