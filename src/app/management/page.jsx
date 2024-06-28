@@ -1,23 +1,32 @@
 "use client"
 import React, { useState, useEffect } from "react";
-import ItemForm from "@/components/ItemForm"; 
-import { Item, Inventory } from "@/utils/inventory"; 
-import { getAllDocuments, addDocument, updateDocument } from "/src/utils/firebaseUtils.js"; 
-import { db } from "../../../firebase.config"; 
+import ItemForm from "@/components/ItemForm";
+import { Item, Inventory } from "@/utils/inventory";
+import { getAllDocuments, addDocument, updateDocument, deleteDocument } from "/src/utils/firebaseUtils.js";
+import { db } from "../../../firebase.config";
+
+const LOCAL_STORAGE_KEY = "school_inventory";
 
 export default function ManagementPage() {
-  const [inventory, setInventory] = useState(new Inventory("School Supplies", []));
-  const [editItemId, setEditItemId] = useState(null); 
+  const [inventory, setInventory] = useState(() => {
+    const storedInventory = localStorage.getItem(LOCAL_STORAGE_KEY);
+    return storedInventory ? JSON.parse(storedInventory) : new Inventory("School Supplies", []);
+  });
+
+  const [editItemId, setEditItemId] = useState(null); // State to track the item being edited
+
   useEffect(() => {
     async function fetchData() {
       try {
         const documents = await getAllDocuments(db, "items");
-        const itemInstances = documents.map((doc) => {
+        const itemInstances = documents.map(doc => {
           const item = new Item(doc.name, doc.quantity);
           item.id = doc.id;
           return item;
         });
-        setInventory(new Inventory("School Supplies", itemInstances));
+        const newInventory = new Inventory("School Supplies", itemInstances);
+        setInventory(newInventory);
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newInventory));
       } catch (error) {
         console.log("Failed fetching data", error);
       }
@@ -26,8 +35,12 @@ export default function ManagementPage() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(inventory));
+  }, [inventory]);
+
   function handleAddItem(itemName) {
-    const newItem = new Item(itemName, 1); 
+    const newItem = new Item(itemName, 1);
 
     addDocument(db, "items", {
       name: newItem.name,
@@ -36,57 +49,88 @@ export default function ManagementPage() {
 
     setInventory(prevInventory => {
       const newInventory = new Inventory(prevInventory.name, [...prevInventory.items, newItem]);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newInventory));
       return newInventory;
     });
   }
 
-  function handleEditItem(item) {
-    setEditItemId(item.id); 
-  }
+  function deleteItem(itemName) {
+    const updatedItems = inventory.items.filter(item => item.name !== itemName);
 
-  async function handleSaveItem(updatedItem) {
-    try {
-      const itemObj = {
-        name: updatedItem.name,
-        quantity: updatedItem.quantity,
-      };
+    setInventory(prevInventory => {
+      const newInventory = new Inventory(prevInventory.name, updatedItems);
+      return newInventory;
+    });
 
-      await updateDocument(db, "items", updatedItem.id, itemObj);
+    const updatedInventory = new Inventory(inventory.name, updatedItems);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedInventory));
 
-      setInventory(prevInventory => {
-        const updatedItems = prevInventory.items.map(item => {
-          if (item.id === updatedItem.id) {
-            return updatedItem;
-          }
-          return item;
-        });
-        return new Inventory(prevInventory.name, updatedItems);
+    deleteDocument(db, "items", itemName)
+      .then(() => {
+        // Optionally handle success if needed
+      })
+      .catch(error => {
+        console.error("Failed to delete item:", error);
+        // Optionally handle error
       });
-
-      setEditItemId(null); 
-    } catch (error) {
-      console.error("Failed to update item", error);
-    }
   }
 
-  function cancelEdit() {
-    setEditItemId(null); 
-  }
-
-  function deleteItem(name) {
-    const updatedItems = inventory.items.filter(item => item.name !== name);
-    setInventory(prevInventory => new Inventory(prevInventory.name, updatedItems));
-  }
-
-  function updateItemQuantity(name, newQuantity) {
+  function updateItemQuantity(itemName, newQuantity) {
     const updatedItems = inventory.items.map(item => {
-      if (item.name === name) {
+      if (item.name === itemName) {
         return { ...item, quantity: newQuantity };
       }
       return item;
     });
 
-    setInventory(prevInventory => new Inventory(prevInventory.name, updatedItems));
+    setInventory(prevInventory => {
+      const newInventory = new Inventory(prevInventory.name, updatedItems);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newInventory));
+      return newInventory;
+    });
+
+    updateDocument(db, "items", itemName, { quantity: newQuantity });
+  }
+
+  function increaseItemQuantity(itemName, amount = 1) {
+    const item = inventory.items.find(item => item.name === itemName);
+    if (item) {
+      const newQuantity = item.quantity + amount;
+      updateItemQuantity(itemName, newQuantity);
+    }
+  }
+
+  function decreaseItemQuantity(itemName, amount = 1) {
+    const item = inventory.items.find(item => item.name === itemName);
+    if (item) {
+      const newQuantity = item.quantity - amount;
+      updateItemQuantity(itemName, newQuantity);
+    }
+  }
+
+  function handleEditItem(item) {
+    setEditItemId(item.id); // Set the id of the item being edited
+  }
+
+  function handleSaveItem(updatedItem) {
+    const updatedItems = inventory.items.map(item => {
+      if (item.id === updatedItem.id) {
+        return updatedItem; // Update the item with new details
+      }
+      return item;
+    });
+
+    setInventory(prevInventory => {
+      const newInventory = new Inventory(prevInventory.name, updatedItems);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newInventory));
+      return newInventory;
+    });
+
+    setEditItemId(null); // Exit edit mode
+  }
+
+  function cancelEdit() {
+    setEditItemId(null); // Exit edit mode
   }
 
   return (
@@ -96,41 +140,25 @@ export default function ManagementPage() {
       <ItemForm addItem={handleAddItem} />
 
       <ul>
-        {inventory.items.map((item, index) => (
-          <li key={index} className="mb-2 border-red-500 border-2 bg-blue-200 text-black font-bold rounded-lg p-2">
+        {inventory.items.map(item => (
+          <li key={item.id} className="mb-2 border-red-500 border-2 bg-blue-200 text-black font-bold rounded-lg p-2">
             {editItemId === item.id ? (
-              
               <div className="flex items-center">
                 <input
                   type="text"
                   value={item.name}
-                  onChange={(e) => {
+                  onChange={e => {
                     const newName = e.target.value;
-                    setInventory(prevInventory => {
-                      const updatedItems = prevInventory.items.map(existingItem => {
-                        if (existingItem.id === item.id) {
-                          return { ...existingItem, name: newName };
-                        }
-                        return existingItem;
-                      });
-                      return new Inventory(prevInventory.name, updatedItems);
-                    });
+                    const updatedItem = { ...item, name: newName };
+                    handleSaveItem(updatedItem); // Save the updated item
                   }}
                 />
                 <input
                   type="number"
                   value={item.quantity}
-                  onChange={(e) => {
+                  onChange={e => {
                     const newQuantity = parseInt(e.target.value);
-                    setInventory(prevInventory => {
-                      const updatedItems = prevInventory.items.map(existingItem => {
-                        if (existingItem.id === item.id) {
-                          return { ...existingItem, quantity: newQuantity };
-                        }
-                        return existingItem;
-                      });
-                      return new Inventory(prevInventory.name, updatedItems);
-                    });
+                    updateItemQuantity(item.name, newQuantity);
                   }}
                 />
                 <button
@@ -147,7 +175,6 @@ export default function ManagementPage() {
                 </button>
               </div>
             ) : (
-              
               <div className="flex items-center">
                 {item.name}: {item.quantity}
                 <button
@@ -158,13 +185,13 @@ export default function ManagementPage() {
                 </button>
                 <button
                   className="ml-2 px-2 py-1 bg-blue-500 text-white rounded"
-                  onClick={() => updateItemQuantity(item.name, item.quantity + 1)}
+                  onClick={() => increaseItemQuantity(item.name)}
                 >
                   Increase
                 </button>
                 <button
                   className="ml-2 px-2 py-1 bg-blue-500 text-white rounded"
-                  onClick={() => updateItemQuantity(item.name, item.quantity - 1)}
+                  onClick={() => decreaseItemQuantity(item.name)}
                 >
                   Decrease
                 </button>
