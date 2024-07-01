@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect } from "react";
-import ItemFormComponent from "/src/components/ItemForm";
+import dynamic from 'next/dynamic';  // Import dynamic from next/dynamic for client-side components
 import { Item, Inventory } from "/src/utils/inventory";
 import {
   db,
@@ -10,9 +10,15 @@ import {
   updateCollectionItem,
 } from "../../../firebase.config";
 
+// Import ItemFormComponent dynamically for client-side rendering
+const ItemFormComponent = dynamic(() => import("/src/components/ItemForm"), { ssr: false });
+
+// Define ManagementPage component
 export default function ManagementPage() {
+  // Initialize state using useState hook
   const [inventory, setInventory] = useState(new Inventory("School Supplies", []));
 
+  // Use useEffect hook to fetch data on component mount
   useEffect(() => {
     async function fetchData() {
       try {
@@ -21,18 +27,17 @@ export default function ManagementPage() {
           return new Item(doc.data.name, doc.data.quantity, doc.id);
         });
 
-        setInventory(new Inventory(inventory.name, newItems));
+        // Set local state with fetched data
+        setInventory(new Inventory("School Supplies", newItems));
       } catch (error) {
         console.log("Failed fetching data", error);
       }
     }
 
     fetchData();
-    return () => {
-      console.log("Cleanup");
-    };
   }, []);
 
+  // Function to handle item addition
   async function handleAddItem(event) {
     event.preventDefault();
 
@@ -45,43 +50,51 @@ export default function ManagementPage() {
     };
 
     try {
+      // Add item to Firestore
       const itemID = await addToCollection(db, "Items", addedItem);
+
+      // Create new Item object
       const newItem = new Item(itemName, itemQuantity, itemID);
 
-      const newInventory = new Inventory(inventory.name, [...inventory.items, newItem]);
-      setInventory(newInventory);
+      // Update local state with new item
+      const updatedItems = [...inventory.items, newItem];
+      setInventory(new Inventory("School Supplies", updatedItems));
     } catch (error) {
       console.error("Error adding item:", error);
     }
   }
 
+  // Function to delete an item
   async function deleteItem(itemID) {
     try {
+      // Remove item from Firestore
       await removeFromCollection(db, "Items", itemID);
 
-      const newInventoryItems = inventory.items.filter((item) => item.id !== itemID);
-      const newInventory = new Inventory(inventory.name, newInventoryItems);
-      setInventory(newInventory);
+      // Filter out deleted item from local state
+      const updatedItems = inventory.items.filter((item) => item.id !== itemID);
+      setInventory(new Inventory("School Supplies", updatedItems));
     } catch (error) {
       console.error("Error deleting item:", error);
     }
   }
 
+  // Function to update an item
   async function updateItem(itemToUpdate) {
     try {
-      const newItems = inventory.items.map((item) =>
-        itemToUpdate.id === item.id ? itemToUpdate : item
-      );
-
-      const newInventory = new Inventory(inventory.name, newItems);
-      setInventory(newInventory);
-
+      // Update item in Firestore
       await updateCollectionItem(db, "Items", itemToUpdate, itemToUpdate.id);
+
+      // Update local state with updated item
+      const updatedItems = inventory.items.map((item) =>
+        item.id === itemToUpdate.id ? itemToUpdate : item
+      );
+      setInventory(new Inventory("School Supplies", updatedItems));
     } catch (error) {
       console.error("Error updating item:", error);
     }
   }
 
+  // Render component JSX
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4 text-center">Manage School Supplies</h1>
