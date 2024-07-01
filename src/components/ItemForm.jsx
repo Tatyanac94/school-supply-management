@@ -2,32 +2,102 @@
 import React, { useState } from "react";
 import { Item } from "@/utils/inventory";
 
+export default function ItemFormComponent({
+  id,
+  name,
+  quantity,
+  updateItem,
+  deleteItem,
+  isManagementPage,
+  onSave,
+  onCancel,
+}) {
+  const [isEditing, setIsEditing] = useState(false);
 
-const ItemForm = ({ addItem }) => {
-  const [itemName, setItemName] = useState('');
+  const [updatedItem, setUpdatedItem] = useState({
+    name,
+    quantity,
+  });
 
-  const handleSubmit = (e) => {
+  function handleUpdateFormSubmit(e) {
     e.preventDefault();
-    if (itemName.trim()) {
-      addItem(itemName);
-      setItemName('');
-    }
-  };
+
+    const newItem = new Item(updatedItem.name, updatedItem.quantity);
+    newItem.id = id;
+
+    updateItem(newItem);
+    onSave(newItem);
+    setIsEditing(false);
+  }
 
   return (
-    <form onSubmit={handleSubmit} className="mb-4">
-      <input
-        type="text"
-        value={itemName}
-        onChange={(e) => setItemName(e.target.value)}
-        placeholder="Enter item name"
-        className="px-3 py-2 border border-gray-300 rounded mr-2 text-black"
-      />
-      <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded">
-        Add Item
-      </button>
-    </form>
-  );
-};
+    <div className="flex justify-between p-5 m-5 overflow-auto border border-red-500 rounded-md bg-blue-200 text-black">
+      {isEditing ? (
+        <form onSubmit={handleUpdateFormSubmit} className="flex justify-between w-full">
+          <div className="">
+            <input
+              className="block p-1 border rounded border-red-500 text-black"
+              placeholder="Name"
+              type="text"
+              name="name"
+              id="name-input"
+              required
+              value={updatedItem.name}
+              onChange={(e) => setUpdatedItem({ ...updatedItem, name: e.target.value })}
+            />
 
-export default ItemForm;
+            <input
+              className="block p-1 border rounded border-red-600 text-black"
+              placeholder="Quantity"
+              type="number"
+              name="quantity"
+              min={0}
+              required
+              value={updatedItem.quantity}
+              onChange={(e) =>
+                setUpdatedItem({ ...updatedItem, quantity: parseInt(e.target.value) })
+              }
+            />
+          </div>
+          <button
+            className="p-2 my-4 border rounded border-red-500 hover:bg-red-600 text-black"
+            type="submit"
+          >
+            Submit
+          </button>
+          <button
+            onClick={onCancel}
+            className="p-2 my-4 border rounded border-red-500 hover:bg-red-600 text-black"
+            type="button"
+          >
+            Cancel
+          </button>
+        </form>
+      ) : (
+        <>
+          <div>
+            <p className="my-1">Name: {name}</p>
+            <p className="my-1">Quantity: {quantity}</p>
+          </div>
+          {isManagementPage && (
+            <div>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="p-2 my-4 rounded border-red-900 hover:bg-red-600 text-black"
+              >
+                Edit
+              </button>
+
+              <button
+                onClick={() => deleteItem(name)}
+                className="p-2 my-4 rounded border-red-900 hover:bg-red-600 text-black"
+              >
+                Delete
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

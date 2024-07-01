@@ -1,11 +1,11 @@
 import {
-    collection,
-    getDocs,
-    addDoc,
-    doc,
-    updateDoc,
-    deleteDoc,
-  } from "firebase/firestore";
+  collection,
+  getDocs,
+  addDoc,
+  doc,
+  updateDoc,
+  deleteDoc,
+} from "firebase/firestore";
 
 /**
  * Utility Function that gets all documents from a firestore database and returns an array of objects
@@ -50,35 +50,35 @@ async function addDocument(db, collectionName, data) {
  * @param {*} data object of data to be updated within document
  */
 async function updateDocument(db, collectionName, id, data) {
-    try {
-      const docRef = doc(db, collectionName, id);
-  
-      if (docRef) {
-        await updateDoc(docRef, data);
-      } else {
-        console.log("NO reference to doc found with id:", id);
-      }
-    } catch (error) {
-      console.error("Error Updating document: ", error);
+  try {
+    const docRef = doc(db, collectionName, id);
+
+    if (docRef) {
+      await updateDoc(docRef, data);
+    } else {
+      console.log("NO reference to doc found with id: ", id);
     }
+  } catch (error) {
+    console.error("Error Updating document: ", error);
   }
-  
-  /**
-   * Deletes a document from a Cloud Firestore db
-   * @param {database instance} db An instance of a Cloud Firestore Database
-   * @param {string} collectionName The name of a Firestore db collection
-   * @param {string} id id of cloud firestore document
-   */
-  async function deleteDocument(db, collectionName, id) {
-    try {
-      const docRef = doc(db, collectionName, id);
-      if (docRef) {
-        await deleteDoc(docRef);
-        console.log("Doc deleted with ID: ", docRef.id);
-      }
-    } catch (error) {
-      console.error("Error deleting document: ", error);
+}
+
+/**
+ * Deletes a document from a Cloud Firestore db
+ * @param {database instance} db An instance of a Cloud Firestore Database
+ * @param {string} collectionName The name of a Firestore db collection
+ * @param {string} id id of cloud firestore document
+ */
+async function deleteDocument(db, collectionName, id) {
+  try {
+    const docRef = doc(db, collectionName, id);
+    if (docRef) {
+      await deleteDoc(docRef);
+      console.log("Doc deleted with ID: ", docRef.id);
     }
+  } catch (error) {
+    console.error("Error deleting document: ", error);
   }
-  
-  export { getAllDocuments, addDocument, updateDocument, deleteDocument };
+}
+
+export { getAllDocuments, addDocument, updateDocument, deleteDocument };
