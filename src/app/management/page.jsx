@@ -1,125 +1,85 @@
 "use client"
 import React, { useState, useEffect } from "react";
-import ItemFormComponent from "@/components/ItemForm";
-import { Item, Inventory } from "@/utils/inventory";
-import { getAllDocuments, addDocument, updateDocument, deleteDocument } from "/src/utils/firebaseUtils.js"; 
-import { db } from "../../../firebase.config";
-
-const LOCAL_STORAGE_KEY = "school_inventory";
+import ItemFormComponent from "/src/components/ItemForm";
+import { Item, Inventory } from "/src/utils/inventory";
+import {
+  db,
+  getCollection,
+  addToCollection,
+  removeFromCollection,
+  updateCollectionItem,
+} from "../../../firebase.config";
 
 export default function ManagementPage() {
-  const [inventory, setInventory] = useState(() => {
-    const storedInventory = localStorage.getItem(LOCAL_STORAGE_KEY);
-    return storedInventory ? JSON.parse(storedInventory) : new Inventory("School Supplies", []);
-  });
-
-  const [editItemId, setEditItemId] = useState(null); 
+  const [inventory, setInventory] = useState(new Inventory("School Supplies", []));
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const documents = await getAllDocuments(db, "items");
-        const itemInstances = documents.map(doc => {
-          const item = new Item(doc.name, doc.quantity);
-          item.id = doc.id;
-          return item;
+        const itemsCollection = await getCollection(db, "Items");
+        const newItems = itemsCollection.map((doc) => {
+          return new Item(doc.data.name, doc.data.quantity, doc.id);
         });
-        const newInventory = new Inventory("School Supplies", itemInstances);
-        setInventory(newInventory);
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newInventory));
+
+        setInventory(new Inventory(inventory.name, newItems));
       } catch (error) {
         console.log("Failed fetching data", error);
       }
     }
 
     fetchData();
+    return () => {
+      console.log("Cleanup");
+    };
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(inventory));
-  }, [inventory]); 
-  function handleAddItem(event) {
-    event.preventDefault(); 
+  async function handleAddItem(event) {
+    event.preventDefault();
 
     const itemName = event.target.name.value;
     const itemQuantity = parseInt(event.target.quantity.value);
 
-    const newItem = new Item(itemName, itemQuantity);
+    const addedItem = {
+      name: itemName,
+      quantity: itemQuantity,
+    };
 
-    addDocument(db, "items", {
-      name: newItem.name,
-      quantity: newItem.quantity,
-    });
+    try {
+      const itemID = await addToCollection(db, "Items", addedItem);
+      const newItem = new Item(itemName, itemQuantity, itemID);
 
-    setInventory(prevInventory => {
-      const newInventory = new Inventory(prevInventory.name, [...prevInventory.items, newItem]);
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newInventory));
-      return newInventory;
-    });
-
-    event.target.reset();
+      const newInventory = new Inventory(inventory.name, [...inventory.items, newItem]);
+      setInventory(newInventory);
+    } catch (error) {
+      console.error("Error adding item:", error);
+    }
   }
 
-  function deleteItem(itemName) {
-    const updatedItems = inventory.items.filter(item => item.name !== itemName);
+  async function deleteItem(itemID) {
+    try {
+      await removeFromCollection(db, "Items", itemID);
 
-    setInventory(prevInventory => {
-      const newInventory = new Inventory(prevInventory.name, updatedItems);
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newInventory));
-      return newInventory;
-    });
-
-    deleteDocument(db, "items", itemName)
-      .then(() => {
-       
-      })
-      .catch(error => {
-        console.error("Failed to delete item:", error);
-        
-      });
+      const newInventoryItems = inventory.items.filter((item) => item.id !== itemID);
+      const newInventory = new Inventory(inventory.name, newInventoryItems);
+      setInventory(newInventory);
+    } catch (error) {
+      console.error("Error deleting item:", error);
+    }
   }
 
-  function updateItemQuantity(itemName, newQuantity) {
-    const updatedItems = inventory.items.map(item => {
-      if (item.name === itemName) {
-        return { ...item, quantity: newQuantity };
-      }
-      return item;
-    });
+  async function updateItem(itemToUpdate) {
+    try {
+      const newItems = inventory.items.map((item) =>
+        itemToUpdate.id === item.id ? itemToUpdate : item
+      );
 
-    setInventory(prevInventory => {
-      const newInventory = new Inventory(prevInventory.name, updatedItems);
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newInventory));
-      return newInventory;
-    });
+      const newInventory = new Inventory(inventory.name, newItems);
+      setInventory(newInventory);
 
-    updateDocument(db, "items", itemName, { quantity: newQuantity });
-  }
-
-  function handleEditItem(item) {
-    setEditItemId(item.id); 
-  }
-
-  function handleSaveItem(updatedItem) {
-    const updatedItems = inventory.items.map(item => {
-      if (item.id === updatedItem.id) {
-        return updatedItem; 
-      }
-      return item; 
-    });
-  
-    setInventory(prevInventory => {
-      const newInventory = new Inventory(prevInventory.name, updatedItems);
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newInventory));
-      return newInventory;
-    });
-  
-    setEditItemId(null);
-  }
-  
-
-  function cancelEdit() {
-    setEditItemId(null);
+      await updateCollectionItem(db, "Items", itemToUpdate, itemToUpdate.id);
+    } catch (error) {
+      console.error("Error updating item:", error);
+    }
   }
 
   return (
@@ -157,19 +117,20 @@ export default function ManagementPage() {
         </button>
       </form>
 
-      {inventory.items.map((item, index) => (
-        <ItemFormComponent
-          key={item.id}
-          id={item.id}
-          name={item.name}
-          quantity={item.quantity}
-          updateItem={updateItemQuantity}
-          deleteItem={deleteItem}
-          isManagementPage={true}
-          onSave={handleSaveItem}
-          onCancel={cancelEdit}
-        />
-      ))}
+      <div className="items-list">
+        <h2 className="text-xl font-bold mb-2 divide-y divide-gray-200">Items:</h2>
+        {inventory.items.map((item) => (
+          <ItemFormComponent
+            key={item.id}
+            name={item.name}
+            quantity={item.quantity}
+            updateItem={updateItem}
+            deleteItem={() => deleteItem(item.id)}  // Pass item.id to deleteItem
+            id={item.id}
+            isManagementPage={true}
+          />
+        ))}
+      </div>
     </div>
   );
 }

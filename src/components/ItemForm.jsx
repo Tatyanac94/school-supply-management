@@ -15,18 +15,25 @@ export default function ItemFormComponent({
   const [isEditing, setIsEditing] = useState(false);
 
   const [updatedItem, setUpdatedItem] = useState({
+    id,
     name,
     quantity,
+    updateItem,
+    deleteItem,
+    onSave,
+    onCancel
   });
 
-  function handleUpdateFormSubmit(e) {
-    e.preventDefault();
-
-    const newItem = new Item(updatedItem.name, updatedItem.quantity);
-    newItem.id = id;
+  function handleUpdateFormSubmit() {
+   const name = updatedItem.name;
+   const quantity = updatedItem.quantity;
+   const newItem = {
+    id,
+    name,
+    quantity,
+   };
 
     updateItem(newItem);
-    onSave(newItem);
     setIsEditing(false);
   }
 
