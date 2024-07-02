@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect } from "react";
-import dynamic from 'next/dynamic'; 
+import ItemFormComponent from "@/components/ItemForm";
 import { Item, Inventory } from "/src/utils/inventory";
 import {
   db,
@@ -11,74 +11,72 @@ import {
 } from "../../../firebase.config";
 
 
-const ItemFormComponent = dynamic(() => import("/src/components/ItemForm"), { ssr: false });
+// const ItemFormComponent = dynamic(() => import("/src/components/ItemForm"), { ssr: false });
 
 export default function ManagementPage() {
-  const [inventory, setInventory] = useState(new Inventory("School Supplies", []));
+  const [inventory, setInventory] = useState(
+    new Inventory("School Supplies", []));
 
   useEffect(() => {
     async function fetchData() {
       try {
         const itemsCollection = await getCollection(db, "Items");
         const newItems = itemsCollection.map((doc) => {
-          return new Item(doc.data.name, doc.data.quantity, doc.id);
+          return new Item(doc.data.name, 
+            doc.data.quantity, 
+            doc.id
+          );
         });
 
-        setInventory(new Inventory("School Supplies", newItems));
+        setInventory(new Inventory(inventory.name, newItems));
       } catch (error) {
         console.log("Failed fetching data", error);
       }
     }
 
     fetchData();
-  }, []);
+		return () => {
+			console.log("get all docs cleanup");
+		};
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
   async function handleAddItem(event) {
     event.preventDefault();
 
-    const itemName = event.target.name.value;
-    const itemQuantity = parseInt(event.target.quantity.value);
-
-    const addedItem = {
-      name: itemName,
-      quantity: itemQuantity,
+    const name = event.target.name.value;
+    const quantity = parseInt(event.target.quantity.value);
+    const itemToAdd = {
+      name,
+      quantity,
     };
-
-    try {
-      const itemID = await addToCollection(db, "Items", addedItem);
-
-      const newItem = new Item(itemName, itemQuantity, itemID);
-
-      const updatedItems = [...inventory.items, newItem];
-      setInventory(new Inventory("School Supplies", updatedItems));
-    } catch (error) {
-      console.error("Error adding item:", error);
+    const itemID = addToCollection(db, "Items", itemToAdd);
+    const newItem = new Item(
+      name, 
+      quantity, 
+      itemID
+    );
+      const newInventory = new Inventory(inventory.name, inventory.items);
+      newInventory.addItem(newItem);
+      setInventory(newInventory);
+      console.log("Added item:");
     }
+
+   function deleteItem(itemID) {
+      const newInventory = new Inventory(inventory.name, inventory.items);
+      newInventory.deleteItem(itemID);
+      removeFromCollection(db, "Items", itemID);
+      setInventory(newInventory);
   }
 
-  async function deleteItem(itemID) {
-    try {
-      await removeFromCollection(db, "Items", itemID);
-
-      const updatedItems = inventory.items.filter((item) => item.id !== itemID);
-      setInventory(new Inventory("School Supplies", updatedItems));
-    } catch (error) {
-      console.error("Error deleting item:", error);
+   function updateItem(itemToUpdate) {
+     const newItems = inventory.items.map((screen) => {
+           return itemToUpdate.id === item.id ? itemToUpdate : item;
+     });
+     const newInventory = new Inventory(inventory.name, newItems);
+     setInventory(newInventory);
+     updateCollectionItem(db, "Items", itemToUpdate, itemToUpdate.id);
     }
-  }
-
-  async function updateItem(itemToUpdate) {
-    try {
-      await updateCollectionItem(db, "Items", itemToUpdate, itemToUpdate.id);
-
-      const updatedItems = inventory.items.map((item) =>
-        item.id === itemToUpdate.id ? itemToUpdate : item
-      );
-      setInventory(new Inventory("School Supplies", updatedItems));
-    } catch (error) {
-      console.error("Error updating item:", error);
-    }
-  }
 
   return (
     <div>
@@ -117,9 +115,9 @@ export default function ManagementPage() {
 
       <div className="items-list">
         <h2 className="text-xl font-bold mb-2 divide-y divide-gray-200">Items:</h2>
-        {inventory.items.map((item) => (
+        {inventory.items.map((item, index) => (
           <ItemFormComponent
-            key={item.id}
+            key={index}
             name={item.name}
             quantity={item.quantity}
             updateItem={updateItem}
