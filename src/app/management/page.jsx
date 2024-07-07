@@ -1,82 +1,100 @@
 "use client"
+
 import React, { useState, useEffect } from "react";
 import ItemFormComponent from "@/components/ItemForm";
-import { Item, Inventory } from "/src/utils/inventory";
-import {
-  db,
-  getCollection,
-  addToCollection,
-  removeFromCollection,
-  updateCollectionItem,
-} from "../../../firebase.config";
-
-
-// const ItemFormComponent = dynamic(() => import("/src/components/ItemForm"), { ssr: false });
+import { Item, Inventory } from "@/utils/inventory";
+import { getAllDocuments, addDocument, updateDocument, deleteDocument } from "@/utils/firebase.Utils";
+import { db, auth } from "../../../firebase.config";
 
 export default function ManagementPage() {
-  const [inventory, setInventory] = useState(
-    new Inventory("School Supplies", []));
+  const [inventory, setInventory] = useState(new Inventory("School Supplies", []));
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const itemsCollection = await getCollection(db, "Items");
-        const newItems = itemsCollection.map((doc) => {
-          return new Item(doc.data.name, 
-            doc.data.quantity, 
-            doc.id
+        const documents = await getAllDocuments(db, "items");
+        const setItems = documents.map((doc) => {
+          const item = new Item(
+            doc.name,
+            doc.quantity
           );
+          item.id = doc.id;
+          return item;
         });
-
-        setInventory(new Inventory(inventory.name, newItems));
+        setInventory(prevInventory => ({
+          ...prevInventory,
+          items: setItems
+        }));
       } catch (error) {
-        console.log("Failed fetching data", error);
+        console.log("Error fetching data", error);
       }
     }
 
     fetchData();
-		return () => {
-			console.log("get all docs cleanup");
-		};
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
+    return () => {
+      console.log("get all docs cleanup");
+    };
+  }, []);
 
-  async function handleAddItem(event) {
+  function handleAddItem(event) {
     event.preventDefault();
 
-    const name = event.target.name.value;
-    const quantity = parseInt(event.target.quantity.value);
-    const itemToAdd = {
-      name,
-      quantity,
-    };
-    const itemID = addToCollection(db, "Items", itemToAdd);
     const newItem = new Item(
-      name, 
-      quantity, 
-      itemID
+      event.target.name.value,
+      parseInt(event.target.quantity.value)
     );
-      const newInventory = new Inventory(inventory.name, inventory.items);
-      newInventory.addItem(newItem);
-      setInventory(newInventory);
-      console.log("Added item:");
-    }
 
-   function deleteItem(itemID) {
-      const newInventory = new Inventory(inventory.name, inventory.items);
-      newInventory.deleteItem(itemID);
-      removeFromCollection(db, "Items", itemID);
-      setInventory(newInventory);
+    addDocument(db, "items", {
+      name: newItem.name,
+      quantity: newItem.quantity
+    }).then(() => {
+      const newItems = [...inventory.items, newItem];
+      setInventory(prevInventory => ({
+        ...prevInventory,
+        items: newItems
+      }));
+      console.log("Added item");
+    }).catch(error => {
+      console.error("Error adding item:", error);
+    });
+
+    event.target.reset(); 
   }
 
-   function updateItem(itemToUpdate) {
-     const newItems = inventory.items.map((screen) => {
-           return itemToUpdate.id === item.id ? itemToUpdate : item;
-     });
-     const newInventory = new Inventory(inventory.name, newItems);
-     setInventory(newInventory);
-     updateCollectionItem(db, "Items", itemToUpdate, itemToUpdate.id);
+  async function updateItem(itemToUpdate) {
+    console.log("UPDATED ITEM FROM INVENTORY", itemToUpdate);
+
+    const itemObj = {
+      name: itemToUpdate.name,
+      quantity: itemToUpdate.quantity,
+    };
+
+    await updateDocument(db, "items", itemToUpdate.id, itemObj);
+
+    const newItems = inventory.items.map((item) =>
+      item.id === itemToUpdate.id ? itemToUpdate : item
+    );
+
+    setInventory(prevInventory => ({
+      ...prevInventory,
+      items: newItems
+    }));
+  }
+
+  async function deleteItem(id) {
+    try {
+      await deleteDocument(db, "items", id);
+      const newItems = inventory.items.filter((item) => item.id !== id);
+      setInventory(prevInventory => ({
+        ...prevInventory,
+        items: newItems
+      }));
+      console.log(`Item with ID ${id} deleted successfully.`);
+    } catch (error) {
+      console.error("Error deleting item: ", error);
     }
+  }
+  
 
   return (
     <div>
@@ -84,7 +102,7 @@ export default function ManagementPage() {
 
       <form
         onSubmit={handleAddItem}
-        className="mb-2 border-red-500 border-2 bg-blue-200 text-black font-bold rounded-lg p-2"
+        className="mb-2 border-red-500 border-2 bg-blue-300 text-black font-bold rounded-lg p-2"
       >
         <h2 className="mb-2 text-2xl">Add an Item</h2>
         <div>
@@ -114,15 +132,15 @@ export default function ManagementPage() {
       </form>
 
       <div className="items-list">
-        <h2 className="text-xl font-bold mb-2 divide-y divide-gray-200">Items:</h2>
+        <h2 className="text-xl font-bold mb-2 divide-y divide-gray-200 underline">Items:</h2>
         {inventory.items.map((item, index) => (
           <ItemFormComponent
+            id={item.id}
             key={index}
             name={item.name}
             quantity={item.quantity}
             updateItem={updateItem}
-            deleteItem={() => deleteItem(item.id)}  
-            id={item.id}
+            deleteItem={deleteItem}
             isManagementPage={true}
           />
         ))}

@@ -1,28 +1,61 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import ItemFormComponent from "../components/ItemForm";
+import { Item, Inventory } from "../utils/inventory";
+import { getAllDocuments } from "../utils/firebase.Utils";
+import { db } from "../../firebase.config";
 
 export default function Home() {
-  const [items, setItems] = useState([]);
+  const [inventory, setInventory] = useState(
+    new Inventory("School Supplies", [])
+  );
 
   useEffect(() => {
-    const initialItems = [
-      { id: 1, name: 'Pencils' },
-      { id: 2, name: 'Notebooks' },
-      { id: 3, name: 'Erasers' },
-    ];
-    setItems(initialItems);
+    async function fetchData() {
+      try {
+        const documents = await getAllDocuments(db, "items");
+        const setItems = documents.map((doc) => {
+          return new Item(doc.name, 
+            doc.quantity, 
+            doc.id
+          );
+        });
+
+        setInventory(new Inventory(inventory.name, setItems));
+      } catch (error) {
+        console.log("Error fetching data", error);
+      }
+    }
+
+    fetchData();
+    return () => {
+      console.log("home page side effect cleanup");
+    };
   }, []);
 
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-4 text-center">School Supplies</h1>
-      <ul>
-        {items.map(item => (
-          <li key={item.id} className="mb-2 border-red-500 border-2 bg-blue-200 text-black font-bold rounded-lg p-2">
-            {item.name}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <main style={{ minHeight: "85vh" }}>
+      <h1 className="py-12 text-4xl text-center underline  border-red-500 border-2 bg-blue-300 text-black font-bold rounded-lg">
+  School Supplies Inventory
+</h1>
+
+
+      <div>
+        <h3 className="m-5 text-xl underline">Item list:</h3>
+        <hr className="mx-5"></hr>
+        <div className="flex flex-wrap">
+        {inventory.items.map((item) => (
+          <ItemFormComponent 
+            key={item.id}
+            name={item.name}
+            quantity={item.quantity}
+            id={item.id}           
+              />
+        ))
+        }
+        </div>
+        </div>
+    </main>
   );
-};
+}

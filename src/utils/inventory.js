@@ -1,7 +1,10 @@
+// inventory.js
+
 class Item {
-  constructor(name, quantity) {
+  constructor(name, quantity, id = null) {
     this.name = name;
     this.quantity = quantity;
+    this.id = id;
   }
 }
 
@@ -15,12 +18,10 @@ class Inventory {
     const existingItemIndex = this.items.findIndex(item => item.name === newItem.name);
 
     if (existingItemIndex !== -1) {
-      
       const updatedItems = [...this.items];
       updatedItems[existingItemIndex].quantity += newItem.quantity;
       this.items = updatedItems;
     } else {
-      
       this.items = [...this.items, newItem];
     }
   }
