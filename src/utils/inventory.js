@@ -1,5 +1,3 @@
-// inventory.js
-
 class Item {
   constructor(name, quantity, id = null) {
     this.name = name;
