@@ -4,10 +4,10 @@ import ItemFormComponent from "@/components/ItemForm";
 import { Item, Inventory } from "@/utils/inventory";
 import { getAllDocuments, addDocument, updateDocument, deleteDocument } from "@/utils/firebase.Utils";
 import { db, auth } from "../../../firebase.config";
-import AddAuthItemForm from "@/components/AddAuthItemForm";
-import RegisterForm from "@/components/RegisterForm";
-import LoginForm from "@/components/LoginForm";
-import LogoutButton from "@/components/LogoutButton";
+import AddAuthItemForm from "@/components/addAuthItemForm";
+import RegisterForm from "@/components/registerForm";
+import LoginForm from "@/components/loginForm";
+import LogoutButton from "@/components/logoutButton";
 
 export default function ManagementPage() {
   const [inventory, setInventory] = useState(new Inventory("School Supplies", []));
