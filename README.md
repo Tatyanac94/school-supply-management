@@ -33,3 +33,10 @@ This application is deployed on Vercel. You can view the live site at:  [School 
 - Tailwind CSS
 
 - Google CLoud Firebase
+
+## Running Tests
+
+To run the unit tests, use the following command:
+
+```bash
+npm run test
